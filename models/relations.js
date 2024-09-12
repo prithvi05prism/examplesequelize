@@ -6,13 +6,15 @@ const associateModels = async (User, Commitment, Poll, Vote, Nomination, Caption
     User.belongsToMany(Commitment, {
         foreignKey: 'userID',
         as: 'commitments',
-        through: 'ymemberlist'
+        through: 'ymemberlist',
+        onDelete: 'CASCADE'
     });
 
     Commitment.belongsToMany(User, {
         foreignKey: 'commitmentID',
         as: 'members',
-        through: 'ymemberlist'
+        through: 'ymemberlist',
+        onDelete: 'CASCADE'
     });
 
     // Users - Captions Associations
@@ -20,12 +22,14 @@ const associateModels = async (User, Commitment, Poll, Vote, Nomination, Caption
 
     User.hasMany(Caption, {
         foreignKey: 'writerID',
-        as: 'written_captions'
+        as: 'written_captions',
+        onDelete: 'CASCADE'
     });
 
     User.hasMany(Caption, {
         foreignKey: 'targetID',
-        as: 'captions'
+        as: 'captions',
+        onDelete: 'CASCADE'
     });
 
     Caption.belongsTo(User, {
@@ -43,12 +47,14 @@ const associateModels = async (User, Commitment, Poll, Vote, Nomination, Caption
 
     User.hasMany(Nomination, {
         foreignKey: 'nominatorID',
-        as: 'nominatedpeople'
+        as: 'nominatedpeople',
+        onDelete: 'CASCADE'
     });
 
     User.hasMany(Nomination, {
         foreignKey: 'targetID',
-        as: 'nominatedby'
+        as: 'nominatedby',
+        onDelete: 'CASCADE'
     });
 
     Nomination.belongsTo(User, {
@@ -68,12 +74,14 @@ const associateModels = async (User, Commitment, Poll, Vote, Nomination, Caption
 
     User.hasMany(Vote, {
         foreignKey: 'voterID',
-        as: 'voted'
+        as: 'voted',
+        onDelete: 'CASCADE'
     });
 
     User.hasMany(Vote, {
         foreignKey: 'targetID',
-        as: 'votes'
+        as: 'votes',
+        onDelete: 'CASCADE'
     });
 
     Vote.belongsTo(User, {
@@ -88,7 +96,8 @@ const associateModels = async (User, Commitment, Poll, Vote, Nomination, Caption
 
     Poll.hasMany(Vote, {
         foreignKey: 'pollID',
-        as: 'allvotes'
+        as: 'allvotes',
+        onDelete: 'CASCADE'
     });
 
     Vote.belongsTo(Poll, {
@@ -98,7 +107,8 @@ const associateModels = async (User, Commitment, Poll, Vote, Nomination, Caption
 
     Commitment.hasMany(Poll, {
         foreignKey: 'commitmentID',
-        as: 'commitmentpolls'
+        as: 'commitmentpolls',
+        onDelete: 'CASCADE'
     });
 
     Poll.belongsTo(Commitment, {
