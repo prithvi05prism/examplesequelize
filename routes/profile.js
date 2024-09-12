@@ -1,5 +1,4 @@
 const router = require("express").Router();
-// const { isAdmin } = require("../middleware/auth");
 
 const { addProfile, getProfile, editProfile, writeCaption, searchUsers, deleteProfile } = require("../views/profile");
 
