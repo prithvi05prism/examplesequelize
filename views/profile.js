@@ -1,66 +1,53 @@
 const { alterSync } = require('../db/sync');
 const { postgresClient } = require("../db/postgres");
 const { Op } = require("sequelize");
-const { Caption } = require('../models/caption');
-const { Commitment } = require('../models/commitment');
-const { Nomination } = require('../models/nomination');
-const { Poll } = require('../models/poll');
-const { User } = require('../models/user');
-const { Vote } = require('../models/vote');
+
+const {User} = require('../models/user');
+const {Caption} = require('../models/caption');
+const {Commitment} = require('../models/commitment');
+const {Nomination} = require('../models/nomination');
+const {Poll} = require('../models/poll');
+const {Vote} = require('../models/vote');
 
 const jwt = require("jsonwebtoken");
 const Filter = require("bad-words");
 const words = require("../bad-words.json");
 
-alterSync(postgresClient);
-
 const editProfile = async (req, res) => {
   try {
-    try{
-      const userId = req.user.id;
-      // const userId = req.body.id; // for POSTMAN testing
-
-      const user = await User.findByPk(userId);
-
-      const imgUrl = req.body.imgUrl;
-      if (imgUrl != "") {
-        user.imageUrl = imgUrl;
-        user.set('imgUrl', user.imgUrl);
-        user.changed('imgUrl', true);
-      }
+    // const userID = req.user.id;
+    const userID = req.body.id; // for POSTMAN testing
+    const user = await User.findByPk(userID);
   
-      var quote = req.body.quote;
-      const filter = new Filter({ placeHolder: "x" });
-      filter.addWords(...words);
-      quote = filter.clean(quote);
+    const imgUrl = req.body.imgUrl;
   
-      if (quote != "") {
-        user.quote = quote;
-        user.set('quote', user.quote);
-        user.changed('quote', true);
-      }
-
-      await user.save();
-
-      return res.status(200).send({
-        status: "success",
-        message: "Successfully Updated",
-        user: user
-      });
-    }catch(error){
-      console.log("[editProfile Route] An error has occurred: ", error);
-      return res.status(400).send({
-        status: "failure",
-        message: "[editProfile Route] An error has occurred",
-        error: error
-      })
+    if (imgUrl != "") {
+      user.imageUrl = imgUrl;
     }
+    
+    var quote = req.body.quote;
+    const filter = new Filter({ placeHolder: "x" });
+    filter.addWords(...words);
+    quote = filter.clean(quote);
+    
+    if (quote != "") {
+      user.quote = quote;
+    }
+  
+    await user.save();
+  
+    console.log("User updated succesfully, user: ", user);
+    return res.status(200).send({
+      status: "success",
+      message: "Successfully Updated",
+        user: user
+    });
 
   } catch (error) {
     console.log("[editProfile Route] An error has occurred: ", error);
     return res.status(400).send({
       status: "failure",
-      message: "There was an error, Please try after some time",
+      message: "[editProfile Route] There was an error, Please try after some time",
       error: error
     });
   }
@@ -386,11 +373,13 @@ const deleteProfile = async (req, res) => {
   }
 };
 
-module.exports = {
-  editProfile,
-  writeCaption,
-  addProfile,
-  searchUsers,
-  getProfile,
-  deleteProfile,
-};
+// module.exports = {
+//   editProfile,
+//   writeCaption,
+//   addProfile,
+//   searchUsers,
+//   getProfile,
+//   deleteProfile,
+// };
+
+module.exports = {addProfile, editProfile}

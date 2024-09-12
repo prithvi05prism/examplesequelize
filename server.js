@@ -21,7 +21,7 @@ try{
 }
 
 try{
-  forceSync(postgresClient);
+  alterSync(postgresClient);
   console.log("Models have been synced succesfully");
 }catch(error){
   console.log("An error occurred while trying to sync models: ", error);
@@ -33,7 +33,7 @@ try{
 app.use(cors());
 app.use(function (req, res, next) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Access-Control-Allow-Credentials", true);
   next();
@@ -52,12 +52,12 @@ app.listen(port, () => console.log("Listening at port " + port));
 // ROUTES
 // const nominationRoutes = require("./routes/nominations");
 // const pollRoutes = require("./routes/polls");
-// const profileRoutes = require("./routes/profile");
+const profileRoutes = require("./routes/profile");
 // const commitmentRoutes = require("./routes/commitments")
 
 // app.use("/polls", pollRoutes);
 // app.use("/nominations", nominationRoutes);
-// app.use("/profiles", profileRoutes);
+app.use("/profiles", profileRoutes);
 // app.use("/commitments", commitmentRoutes);
 
 app.get("/test", async (req, res) => {
