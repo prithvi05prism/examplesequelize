@@ -11,6 +11,8 @@ const {alterSync, forceSync} = require('./db/sync');
 const app = express();
 const port = process.env.PORT || 3001;
 
+// Setting Up Database and Models: 
+
 try{
   postgresClient.authenticate();
   console.log("Connection has been established succesfully");

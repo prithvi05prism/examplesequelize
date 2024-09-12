@@ -152,19 +152,21 @@ const writeCaption = async (req, res) => {
 
 const addProfile = async (req, res) => {
   try {
-    const usr = await User.findOne({
+    const user = await User.findOne({
       where: {
         email: req.body.email,
       },
     });
-    if (usr) {
-      console.log(usr);
+    if (user) {
+      console.log("User already exists: ", user);
       return res.status(400).send({
-        msg: "User Exists Already",
+        message: "User Exists Already",
       });
     } else {
-      const bitsId = req.body.id;
 
+      // Formatting the BITS ID and extracting branches:
+
+      const bitsId = req.body.id;
       let branchCode = bitsId.substring(4, bitsId.length - 4);
 
       if (branchCode.includes("B")) {
@@ -175,10 +177,14 @@ const addProfile = async (req, res) => {
         branchCode = [branchCode];
       }
 
+      // Quote Filtering:
+
       var quote = req.body.quote;
       const filter = new Filter({ placeHolder: "x" });
       filter.addWords(...words);
       quote = filter.clean(quote);
+
+      // Creating the user:
 
       const user = await User.create({
         name: `${req.body.firstName} ${req.body.lastName}`,
@@ -191,20 +197,6 @@ const addProfile = async (req, res) => {
         imageUrl: req.body.imgUrl,
       });
 
-      // Updating all the existing Polls with the new User's data:
-
-      const new_vote = { user: user.user_id, count: 0, hasVoted: false };
-
-      await Poll.findAll()
-                .then((results) => {
-                  results.map((poll) => {
-                  poll.votes.push(new_vote);
-                  poll.set('votes', poll.votes);
-                  poll.changed('votes', true);
-                  poll.save();
-                });
-      });
-
       // Creating a JWT token for the created user:
 
       const token = jwt.sign(
@@ -213,22 +205,23 @@ const addProfile = async (req, res) => {
         { expiresIn: "180d" }
       );
 
-      // dev testing
-      console.log("the user is created: ", usr);
+      // Dev Testing: 
+
+      console.log("the user is created: ", user);
       console.log("The JWT token is: ", token);
 
       return res.send({
-        detail: "Profile created",
-        id: user.user_id,
+        message: "Profile created",
+        id: user.userID,
         token: token,
       });
     }
   } catch (err) {
-    console.log(err);
+    console.log("[addProfile Route] There was an error: ", err);
     return res.status(500).send({
       status: "failure",
       msg: "There was an error, Please try after some time",
-      err: err
+      error: err
     });
   }
 };
