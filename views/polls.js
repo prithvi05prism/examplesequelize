@@ -1,6 +1,6 @@
 const { alterSync } = require('../db/sync');
 const { postgresClient } = require("../db/postgres");
-const { Op, Model } = require("sequelize");
+const { Op, Model, fn, literal, col } = require("sequelize");
 
 const {User} = require('../models/user');
 const {Caption} = require('../models/caption');
@@ -165,20 +165,47 @@ const votePoll = async (req, res) => {
       });
     }
 
-    poll.totalCount = poll.totalCount + 1;
-    
-    targetUser.count = targetUser.count + 1;
-    voterUser.hasVoted = true;
+    const vote = await Vote.findOne({where: {
+      [Op.and]: [
+        {pollID: pollID},
+        {voterID: voterID}
+      ]
+    }});
 
-    poll.set('votes', poll.votes); // setting the column 'votes' manually to our local variable poll.votes
-    poll.changed('votes', true); // telling sequelize manually that this column has changed and needs updating.
+    if(vote){
+      vote.targetID = targetID;
+      await vote.save();
 
-    poll.save();
+      console.log("User's vote has been updated to the target");
+      return res.status(200).send({
+        status: "success",
+        message: "The vote has been updated with new data",
+        vote: vote
+      });
+    }else{
+      const new_vote = await Vote.create({
+        voterID: voterID,
+        targetID: targetID,
+        pollID: pollID
+      });
 
-    return res.status(200).json({ msg: "voted for user", poll: poll });
+      poll.votesCount = poll.votesCount + 1;
+      await poll.save();
+
+      console.log("A new vote has been registered: ", new_vote);
+      return res.status(200).send({
+        status: "success",
+        message: "The vote has been registered successfully",
+        vote: new_vote
+      });
+    }
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ msg: "somethong went wrong" });
+    console.log("[votePoll Route] There was an error: ", error);
+    res.status(500).json({
+      status: "failure",
+      message: "There was an error, please try after sometime",
+      error: error
+    });
   }
 };
 
@@ -188,34 +215,39 @@ const leaderboard = async (req, res) => {
 
     const polls = await Poll.findAll({
       where: {
-        totalCount:{
+        votesCount:{
           [Op.gte]: 1,  
         }
       }
     });
 
     for (var j = 0; j < polls.length; j++) {
-      var votes = polls[j].votes;
+      var pollID = polls[j].pollID;
 
-      var maximumValue = votes[0].count;
-      var maxIndex = 0;
+      var result = await Vote.findOne({
+        attributes: [
+          'targetID',
+          [fn('COUNT', col('targetID')), 'count']
+        ],
+        group: ['targetID'],
+        order: [[literal('count'), 'DESC']],
+        limit: 1
+      });
 
-      for (var i = 1; i < votes.length; i++) {
-        if (votes[i].count > maximumValue) {
-          maxIndex = i;
-          maximumValue = votes[i].count;
-        }
-      }
+      let user = await User.findByPk(result.targetID);
 
-      let user = await User.findByPk(votes[maxIndex].user);
-
-      response.push({ id: user.id, name: user.name, votes: maximumValue, imageUrl: user.imageUrl, bitsId: user.bitsId, pollQuestion: polls[j].question });
+      response.push({ id: user.userID, name: user.name, votes: result.dataValues.count, imageUrl: user.imageUrl, bitsId: user.bitsId, pollQuestion: polls[j].question });
     }
 
+    console.log("The leaderboard response is: ", response);
     return res.status(200).json({ response });
   } catch (error) {
-    console.log(error);
-    return res.status(500).json({ msg: "Something went wrong" });
+    console.log("[leaderboard Route] There was an error: ", error);
+    return res.status(500).json({
+      status: "failure",
+      message: "There was an error, please try after some time",
+      error: error
+    });
   }
 };
 

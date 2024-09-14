@@ -1,5 +1,12 @@
 const router = require("express").Router();
-const { allCommitments, updateUserCommitments, searchByCommitment, addCommitment, editCommitment, deleteCommitment} = require("../views/commitments");
+const { 
+    allCommitments, 
+    updateUserCommitments, 
+    searchByCommitment, 
+    addCommitment, 
+    editCommitment, 
+    deleteCommitment
+} = require("../views/commitments");
 
 router.post("/", addCommitment);
 router.get("/", allCommitments);

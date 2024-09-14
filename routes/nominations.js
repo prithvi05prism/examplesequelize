@@ -1,5 +1,10 @@
 const router = require("express").Router();
-const { nominateUser, sendRequest, declineRequest, allRequests } = require("../views/nominations");
+const { 
+    nominateUser, 
+    sendRequest, 
+    declineRequest, 
+    allRequests 
+} = require("../views/nominations");
 
 router.post("/nominate", nominateUser);
 router.get("/requests", allRequests);
