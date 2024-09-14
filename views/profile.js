@@ -150,10 +150,10 @@ const getProfile = async (req, res) => {
     const userID = req.params.id
     const user = await User.findByPk(userID, {
       include: [{
-        Model: Caption,
+        model: Caption,
         as: 'captions',
         include: [{
-          Model: User,
+          model: User,
           as: 'writer'
         }]
       }]
@@ -213,20 +213,29 @@ const searchUsers = async (req, res) => {
     const search_value = `%${search_term}%`;
 
     let results = await User.findAll({
-      attributes: ['user_id', 'name', 'bitsId'],
+      attributes: ['userID', 'name', 'bitsId'],
       where: {
         userID: {
           [Op.not]: req.body.id // req.user.id for production and req.body.id for testing
         },
-        name: {
-          [Op.like]: search_value
-        }
+        [Op.or]: [
+          {
+            name: {
+              [Op.like]: search_value
+            }
+          },
+          {
+            bitsId: {
+              [Op.like]: search_value
+            }
+          }
+        ]
       }
     })
 
-    console.log("These are the results: ", results.toJSON());
+    console.log("These are the results: ", JSON.stringify(results));
 
-    return res.status(200).send(results.toJSON());
+    return res.status(200).send(results);
 
   }catch(e){
     console.log("[searchUsers Route] There was an error: ", e);
@@ -241,75 +250,105 @@ const searchUsers = async (req, res) => {
 const writeCaption = async (req, res) => {
   try {
     var caption = req.body.caption;
-
-    // const writerId = req.user.id;
-    const writerId = req.body.id;
+    // const writerID = req.user.id;
+    const writerID = req.body.id;
+    const targetID = req.params.id;
     
-    const targetId = req.params.id;
-    
-    if (writerId == targetId) {
-      return res.send({
+    if (writerID == targetID) {
+      return res.status(403).send({
         status: "failure",
-        msg: "You can't write for yourself",
+        message: "You can't write for yourself",
       });
-    }
+    };
 
     const filter = new Filter({ placeHolder: "x" });
     filter.addWords(...words);
     caption = filter.clean(caption);
 
-    const writer = await User.findByPk(writerId);
+    const nomination = await Nomination.findOne({where: {
+      [Op.and]: [
+        {targetID: writerID},
+        {nominatorID: targetID}
+      ]
+    }});
 
-    // Creating a temporary array to copy the ID's from Nominated JSON Array, and checking if Writer is Nominated.
-    let temp = [];
-    writer.nominatedby.forEach((x) => temp.push(x.user.user_id));
-
-    if (!temp.includes(targetId)) {
+    if (!nomination){
+      console.log("[writeCaption Route] User not nominated to write for target");
       return res.status(403).send({
-        error: "You're not nominated to write the caption!",
+        status: "failure",
+        message: "You're not nominated to write the caption!"
       });
-    }
+    };
 
     if (caption === "") {
       return res.status(500).send({
         error: "Please enter a valid caption!",
       });
-    } else {
+    }else{
       
-      const writer = await User.findByPk(writerId);
-      const receiver = await User.findByPk(targetId);
+      const writer = await User.findByPk(writerID);
+      const receiver = await User.findByPk(targetID);
 
-      const captions = receiver.captions;
+      if(!receiver){
+        console.log("The target doesn't exist");
+        return res.status(403).send({
+          status: "failure",
+          message: "The target user doesn't exist"
+        })
+      };
 
-      //checking if a caption has already been written or not, then we'll update otherwise push a new one
+      const oldcaption = await Caption.findOne({where: {
+        [Op.and]:[
+          {writerID: writerID},
+          {targetID: targetID}
+        ]
+      }});
 
-      // Case where the caption already exists, and we have to replace it:
-      if (captions.find((o) => o.user.user_id == writer.user_id)) {
-        for (let i = 0; i < captions.length; i++) {
-          if (captions[i].user.user_id == writer.user_id) {
-            captions[i].caption = caption;
-            // If user.update command below doesn't work, alternatively we might have to do this:
-            //await receiver.save({transaction: session});
-          }
-        }
-        
-        // Passing the created captions object as the new entry.
-        receiver.set('captions', captions);
-        receiver.changed('captions', true);
-        await receiver.save();
+      if(oldcaption){
+        oldcaption.caption = caption;
+        await oldcaption.save();
 
-        return res.send({ success: "Succesfully Updated" });
+        const newcaption = await Caption.findOne({where: {
+          [Op.and]:[
+            {writerID: writerID},
+            {targetID: targetID}
+          ]
+        }}, 
+        {
+          include: [
+            {
+            Model: User,
+            as: 'writer'
+            },
+            {
+              Model: User,
+              as: 'target'
+            }
+          ]
+        });
 
-      } else {
+        console.log("The caption was updated: ", newcaption);
 
-        // Case where the caption did not exist and we have to push a new element into the captions array
-        receiver.captions.push({"user": writer, "caption": caption});
-        receiver.set('captions', receiver.captions);
-        receiver.changed('captions', true);
-        await receiver.save();
+        return res.status(200).send({
+          status: "success",
+          message: "Caption was updated succesfully",
+          caption: newcaption
+        });
 
-        console.log("succesfully added the caption", receiver.captions)
-        return res.send({success: "Succesfully Added"});
+      }else {
+        const newcaption = await Caption.create({
+          writerID: writerID,
+          targetID: targetID,
+          caption: caption
+        });
+
+        console.log("The caption was created: ", newcaption);
+
+        return res.status(200).send({
+          status: "success",
+          message: "Caption was created successfully",
+          caption: newcaption
+        })
       }
     }
   } catch (err) {
@@ -322,13 +361,11 @@ const writeCaption = async (req, res) => {
   }
 };
 
-// module.exports = {
-//   editProfile,
-//   writeCaption,
-//   addProfile,
-//   searchUsers,
-//   getProfile,
-//   deleteProfile,
-// };
-
-module.exports = {addProfile, editProfile}
+module.exports = {
+  editProfile,
+  writeCaption,
+  addProfile,
+  searchUsers,
+  getProfile,
+  deleteProfile,
+};

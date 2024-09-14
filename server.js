@@ -50,13 +50,13 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.listen(port, () => console.log("Listening at port " + port));
 
 // ROUTES
-// const nominationRoutes = require("./routes/nominations");
+const nominationRoutes = require("./routes/nominations");
 // const pollRoutes = require("./routes/polls");
 const profileRoutes = require("./routes/profile");
 // const commitmentRoutes = require("./routes/commitments")
 
 // app.use("/polls", pollRoutes);
-// app.use("/nominations", nominationRoutes);
+app.use("/nominations", nominationRoutes);
 app.use("/profiles", profileRoutes);
 // app.use("/commitments", commitmentRoutes);
 

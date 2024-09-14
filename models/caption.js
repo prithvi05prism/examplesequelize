@@ -29,6 +29,10 @@ const Caption = postgresClient.define(
             type: DataTypes.INTEGER,
             allowNull: false
         }
+        // Status Codes:
+        // -1: Declined Request
+        // 0: Requested
+        // 1: Accepted
     },
 
     {
