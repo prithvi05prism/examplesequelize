@@ -32,6 +32,18 @@ const addProfile = async (req, res) => {
       // Formatting the BITS ID and extracting branches:
 
       const bitsId = req.body.id;
+
+      const stringyear = bitsId.substring(0,4);
+      const year = Number(stringyear);
+
+      let senior = false;
+
+      if(year<=2021){
+        senior = true;
+      }
+      console.log("[addProfile Route] This was the year: ", year);
+      console.log("[addProfile Route] This is the senior status: ", senior);
+
       let branchCode = bitsId.substring(4, bitsId.length - 4);
 
       if (branchCode.includes("B")) {
@@ -60,6 +72,7 @@ const addProfile = async (req, res) => {
         quote: quote,
         branchCode: branchCode,
         imageUrl: req.body.imgUrl,
+        senior: senior
       });
 
       // Creating a JWT token for the created user:
