@@ -59,7 +59,11 @@ const sendRequest = async (req, res) => {
     }})
 
     if (caption_record) {
-      console.log("[sendRequest Route] Request has already been sent by" + sender.name + " to " + target.name);
+        if(caption_record.caption !== caption){
+            caption_record.caption = caption;
+            await caption_record.save();
+        }
+      console.log("[sendRequest Route] Request has already been sent by " + sender.name + " to " + target.name);
       console.log(caption_record.toJSON())
       return res.status(500).send({
         status: "failure",
