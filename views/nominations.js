@@ -141,106 +141,75 @@ const nominateUser = async (req, res) => {
     const senderID = req.body.id;
     const receiverID = req.body.receiverId;
 
-    const receiver = await User.findByPk(receiverID);
-    const sender = await User.findByPk(senderID);
+    const target = await User.findByPk(receiverID);
 
-    const senderName = sender.name;
+    if(!target){
+        console.log("The target user doesn't exist");
+        res.status(403).send({
+            status: "failure",
+            message: "The target user doesn't exist"
+        })
+    }
 
-    if (receiver.nominatedby!==null && receiver.nominatedby.find((obj) => obj.user.user_id == senderId)) {
-      return res.send({
-        status: "failure",
-        msg: "User has already been nominated!",
-      });
+    const nomination = await Nomination.findOne({where: {
+        [Op.and]: [
+            {nominatorID: senderID},
+            {targetID: receiverID}
+        ]
+    }})
+
+    if (nomination){
+        console.log("Target has already been nominated!!");
+        return res.status(403).send({
+            status: "failure",
+            message: "User has already been nominated!",
+         });
     }
 
     if (receiverID == senderID) {
-        console.log("[nominateUser Route] You can't nominate yourself !!!");
+        console.log("[nominateUser Route] You can't nominate yourself!!!");
         return res.status(403).send({
             status: "failure",
             message: "You can't nominate yourself",
         });
     }
 
+    const new_nomination = await Nomination.create({
+        nominatorID: senderID,
+        targetID: receiverID
+    });
+
+    console.log("New nomination has been created: ", new_nomination);
+
     // Handling the cases where request was already sent by the targetUser: 
 
-    if (sender.requests!==null && sender.requests.find((o) => o.user.user_id == receiverId)) {
-      const requests = sender.requests;
-      let newCap;
-      for (let i = 0; i < requests.length; i++) {
-        if (requests[i].user.user_id == receiverId) {
-          newCap = requests[i].caption;
+    const request = await Caption.findOne({where: {
+        [Op.and]: [
+            {writerID: receiverID},
+            {targetID: senderID}
+        ]
+    }});
 
-          const filter = new Filter({ placeHolder: "x" });
-          filter.addWords(...words);
-          newCap = filter.clean(newCap);
-
-          requests.splice(i, 1);
-        }
-      }
-      try{
-
-        sender.captions.push({"user": receiver, "caption": newCap});
-        sender.requests = requests;
-
-        sender.set('captions', sender.captions);
-        sender.changed('captions', true);
-        sender.set('requests', sender.requests);
-        sender.changed('requests', true);
-  
-
-        await sender.save();
-
-      }catch(err){
-        console.log("[nominateUser Route] Some error occured: ", err);
-        return res.status(500).send({
-          status: "failure",
-          message: "An error occured",
-          error: err
+    if(request){
+        request.status = 1;
+        await request.save();
+        console.log("Caption updated to approved status.");
+        return res.status(200).send({
+            status: "success",
+            message: "Target has been nominated and Caption approved"
         });
-      }
+    }else{
+        return res.status(200).send({
+            status: "success",
+            message: "Target has been nominated"
+        })
     }
-    
-    
-    else if (sender.declined_requests!==null && sender.declined_requests.find((o) => o.user.user_id == receiverId)) {
-      const declined_requests = sender.declined_requests;
-      let newCap;
-      for (let i = 0; i < declined_requests.length; i++) {
-        if (declined_requests[i].user === receiverId) {
-          newCap = declined_requests[i].caption;
-
-          const filter = new Filter({ placeHolder: "x" });
-          filter.addWords(...words);
-          newCap = filter.clean(newCap);
-          
-          declined_requests.splice(i, 1);
-        }
-      }
-      
-      sender.captions.push({"user": receiver, "caption": newCap});
-      sender.declined_requests = declined_requests;
-    
-      sender.set('captions', sender.captions);
-      sender.changed('captions', true);
-      sender.set('declined_requests', sender.declined_requests);
-      sender.changed('declined_requests', true);
-
-      await sender.save();
-
-    }
-
-    receiver.nominatedby.push({"user": sender, "name": senderName, "id": senderId});
-    receiver.set('nominatedby', receiver.nominatedby);
-    receiver.changed('nominatedby', true);
-    await receiver.save();
-
-    return res.send({
-      status: "success",
-      msg: "Friend nominated successfully!",
-    });
   } catch (err) {
-    return res.send({
+    console.log("[nominateUser Route] An error occurred: ", err);
+    return res.status(400).send({
       status: "failure",
-      msg: err.message,
+      message: "There was an error, please try again after sometime",
+      error: err
     });
   }
 };
@@ -248,44 +217,57 @@ const nominateUser = async (req, res) => {
 const declineRequest = async (req, res) => {
   try {
     // senderId = req.user.id;
-    const senderId = req.body.id;
-    const receiverId = req.body.receiverId;
+    const senderID = req.body.id;
+    const receiverID = req.body.receiverId;
 
-    const sender = await User.findByPk(senderId);
+    const nomination = await Nomination.findOne({where: {
+        [Op.and]: [
+            {nominatorID: senderID},
+            {targetID: receiverID}
+        ]
+    }});
 
-    const requests = sender.requests;
-    let newCap;
+    if(nomination){
+        await Nomination.destroy({where: {
+            [Op.and]: [
+                {nominatorID: senderID},
+                {targetID: receiverID}
+            ]
+        }});
 
-    for (let i = 0; i < requests.length; i++) {
-      if (requests[i].user === receiverId) {
-        newCap = requests[i].caption;
-        requests.splice(i, 1);
-      }
+        console.log("[declineRequest Route] The Nomination has been removed successfully");
     }
-    
-    sender.declined_requests.push({"user": receiverId, "caption": newCap});
-    sender.requests = requests;
 
-    sender.set('declined_requests', sender.declined_requests);
-    sender.set('requests', sender.requests);
-  
-    sender.changed('requests', true);
-    sender.changed('declined_requests', true);
+    const caption = await Caption.findOne({where: {
+        [Op.and]: [
+            {writerID: receiverID},
+            {targetID: senderID}
+        ]
+    }});
 
-    await sender.save();
+    if(!caption){
+        console.log("[declineRequest Route] The request or user doesn't exist anymore");
+        return res.status(403).send({
+            status: "failure",
+            message: "The user or the request doesn't exist anymore"
+        });
+    }else{
+        caption.status = -1;
+        await caption.save();
 
-    return res.send({
-      success: "Succesfully declined",
-    });
-  } catch (err) {
-    throw(err);
-    return res.send({
+        return res.status(200).send({
+            status: "success",
+            message: "The request was declined successfully"
+        })
+    }
+  }catch(err){
+    console.log("[declineRequest Route] There was an error: ", err);
+    return res.status(400).send({
       status: "failure",
-      msg: "There was an error, Please try after some time",
+      message: "There was an error, Please try after some time",
+      error: err
     });
   }
 };
 
-
-// module.exports = { allRequests, nominateUser, declineRequest, sendRequest };
-module.exports = {sendRequest, allRequests}
+module.exports = { allRequests, nominateUser, declineRequest, sendRequest };
