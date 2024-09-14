@@ -51,7 +51,8 @@ const updateUserCommitments = async (req, res) => {
             })
         }
 
-        for(const commitmentID of commitments){
+        for(const returncommitment of commitments){
+            let commitmentID = returncommitment.commitmentID;
             let commitment = await Commitment.findByPk(commitmentID); 
             await user.addCommitment(commitment);
         }
@@ -210,7 +211,5 @@ const deleteCommitment = async (req, res) => {
         })
     }
 }
-
-
 
 module.exports = { allCommitments, updateUserCommitments, searchByCommitment, addCommitment, editCommitment, deleteCommitment };

@@ -10,9 +10,9 @@ const {
 
 router.post("/", addCommitment);
 router.get("/", allCommitments);
-router.get("/:id", searchByCommitment);
 router.post("/user", updateUserCommitments);
-router.delete("/", deleteCommitment);
+router.delete("/:id", deleteCommitment);
+router.get("/:id", searchByCommitment);
 router.put("/", editCommitment);
 
 module.exports = router;
