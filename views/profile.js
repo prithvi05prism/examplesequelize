@@ -112,8 +112,7 @@ const addProfile = async (req, res) => {
 
 const editProfile = async (req, res) => {
   try {
-    // const userID = req.user.id;
-    const userID = req.body.id; // for POSTMAN testing
+    const userID = req.user.id;
     const user = await User.findByPk(userID);
 
     if(!user){
@@ -163,13 +162,22 @@ const getProfile = async (req, res) => {
     const userID = req.params.id
     const user = await User.findByPk(userID, {
       include: [{
+        required: false,
         model: Caption,
         as: 'captions',
         include: [{
           model: User,
           as: 'writer'
-        }]
-      }]
+        }]},
+        {
+          model: Nomination,
+          as: 'nominatedby',
+          include: [{
+            model: User,
+            as: 'nominator'
+          }]
+        }
+      ]
     });
 
     if (!user) {
