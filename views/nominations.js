@@ -197,6 +197,8 @@ const nominateUser = async (req, res) => {
     if(request){
         request.status = 1;
         await request.save();
+        new_nomination.status = 1;
+        await new_nomination.save();
         console.log("Caption updated to approved status.");
         return res.status(200).send({
             status: "success",

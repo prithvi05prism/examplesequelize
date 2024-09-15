@@ -170,8 +170,12 @@ const getProfile = async (req, res) => {
           as: 'writer'
         }]},
         {
+          required: false,
           model: Nomination,
           as: 'nominatedby',
+          where: {
+            status: 0
+          },
           include: [{
             model: User,
             as: 'nominator'
@@ -363,7 +367,11 @@ const writeCaption = async (req, res) => {
           caption: caption
         });
 
+        nomination.status = 1;
+        await nomination.save();
+
         console.log("The caption was created: ", newcaption);
+        console.log("The nomination now is: ", nomination);
 
         return res.status(200).send({
           status: "success",

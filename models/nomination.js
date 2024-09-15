@@ -19,6 +19,12 @@ const Nomination = postgresClient.define(
         targetID:{
             type: DataTypes.UUID,
             allowNull: false
+        },
+
+        status: {
+            type: DataTypes.INTEGER,
+            allowNull: false,
+            defaultValue: 0
         }
     },
 
