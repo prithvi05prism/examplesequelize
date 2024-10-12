@@ -1,4 +1,3 @@
-const { alterSync } = require('../db/sync');
 const { postgresClient } = require("../db/postgres");
 const { Op, Model } = require("sequelize");
 
@@ -12,6 +11,7 @@ const {Vote} = require('../models/vote');
 const jwt = require("jsonwebtoken");
 const Filter = require("bad-words");
 const words = require("../bad-words.json");
+
 
 const allCommitments = async (req, res) => {
     try {
@@ -30,8 +30,7 @@ const allCommitments = async (req, res) => {
 
 const updateUserCommitments = async (req, res) => {
     try {
-        // const userid = req.user.id;
-        const userid = req.body.id;
+        const userid = req.user.id;
         const user = await User.findByPk(userid);
 
         if (!user) {
@@ -57,18 +56,10 @@ const updateUserCommitments = async (req, res) => {
             await user.addCommitment(commitment);
         }
 
-        const updated_user = await User.findByPk(userid, {
-            include:{
-                model: Commitment,
-                as: 'commitments'
-            }
-        });
-
         console.log("User commitments have been updated: ", updated_user)
         res.status(200).send({
             status: "success",
-            message: "commitments for the user have been updated.",
-            user: updated_user
+            message: "commitments for the user have been updated."
         })
 
     } catch (error) {
@@ -81,26 +72,28 @@ const updateUserCommitments = async (req, res) => {
 }
 
 const searchByCommitment = async (req, res) => {
-    const commitment_id = req.params.id;
-    console.log("this is the commitment_id: ", commitment_id);
+    const commitment_name = req.body.name;
 
     try {
-        const commitment = await Commitment.findByPk(commitment_id, {
+        const commitment = await Commitment.findOne({where: {commitment_name: commitment_name}}, {
             include:{
+                required: false,
                 model: User,
-                as: 'members'
+                as: 'members',
+                where:{
+                    senior: true
+                },
+                attributes: ['userID', 'name', 'bitsId']
             }
         });
 
         const members = commitment.members;
-        console.log("The members are: ", members);
         return res.status(200).json({ members });
-
     } catch (err) {
         console.log("[searchByCommitment Route] An error occurred: ", err);
         res.status(500).send({
             status: "failure",
-            msg: "Some error occurred",
+            message: "Some error occurred",
             error: err
         })
     }
@@ -117,27 +110,67 @@ const addCommitment = async (req, res) => {
             console.log("The commitment already exists: ", check);
             return res.status(400).send({
                 message: "Commitment already exists"
-            })
+            });
         } else {
             const newCommitment = await Commitment.create({
                 commitment_name: commitment,
                 commitment_imageUrl: imgUrl
-            })
-
+            });
+            console.log("[addCommitments Route] New Commitment created: ", newCommitment);
             return res.status(200).send({
                 status: "success",
                 commitment: newCommitment
-            })
+            });
         }
     }catch(err){
         console.log("[addCommitment Route] There was an error: ", err);
         return res.status(400).send({
-            status: "success",
+            status: "failure",
             message: "There was an error, please try after sometime",
             error: err
         })
     }
 
+}
+
+const bulkAddCommitments = async (req, res) => {
+    const commitments = req.body.commitments;
+    try{
+        var newCommitment = "empty";
+        var check = "empty";
+        if(!commitments){
+            console.log("[bulkAddCommitments Route] Commitments Body data is empty");
+            return res.status(400).send({
+                status: "failure",
+                message: "the commitments body data is empty"
+            });
+        }else{
+            for(commitment of commitments){
+                check = await Commitment.findOne({ where: { commitment_name: commitment } });
+                if(check){
+                    console.log("The commitment with name ", commitment, " already exists !!!");
+                }else{
+                    newCommitment = await Commitment.create({
+                        commitment_name: commitment
+                    });
+                    console.log("New commitment is created: ", newCommitment);
+                }
+            };
+
+            console.log("All Commitments were added");
+            return res.status(200).send({
+                status: "success",
+                message: "All commitments were succesfully added"
+            });
+        };
+    }catch(error){
+        console.log("[bulkAddCommitments Route] There was an error: ", error);
+        return res.status(400).send({
+            status: "failure",
+            message: "There was an error, please try after sometime",
+            error: error
+        })
+    }
 }
 
 const editCommitment = async (req, res) => {
@@ -212,4 +245,4 @@ const deleteCommitment = async (req, res) => {
     }
 }
 
-module.exports = { allCommitments, updateUserCommitments, searchByCommitment, addCommitment, editCommitment, deleteCommitment };
+module.exports = { allCommitments, updateUserCommitments, searchByCommitment, addCommitment, bulkAddCommitments, editCommitment, deleteCommitment};

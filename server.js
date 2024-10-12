@@ -8,6 +8,8 @@ const {postgresClient} = require("./db/postgres");
 const associatedModels = require('./models/index');
 const {alterSync, forceSync} = require('./db/sync');
 
+const {errorLogging, requestLogging} = require('./middleware/logging');
+
 const app = express();
 const port = process.env.PORT || 3001;
 
@@ -46,8 +48,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // LISTEN
-
 app.listen(port, () => console.log("Listening at port " + port));
+
+// Error and Request Middleware
+app.use(errorLogging);
+app.use(requestLogging);
 
 // ROUTES
 const nominationRoutes = require("./routes/nominations");

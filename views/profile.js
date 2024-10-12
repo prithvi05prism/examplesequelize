@@ -81,7 +81,8 @@ const addProfile = async (req, res) => {
         id: user.userID, 
         bitsID: user.bitsId, 
         email: user.email, 
-        branchCode: user.branchCode 
+        branchCode: user.branchCode,
+        senior: senior
       },
         process.env.TOKEN_KEY,
         { 
@@ -94,7 +95,30 @@ const addProfile = async (req, res) => {
       console.log("The user is created: ", user.toJSON());
       console.log("The JWT token is: ", token);
 
-      return res.send({
+      // adding Commitments for the user: 
+
+      const commitments = req.body.commitments;
+      if (!commitments) {
+          console.log("[addProfile Route] Commitments body data is empty");
+      }else{
+        await user.setCommitments([]);
+        for(const returncommitment of commitments){
+          let commitmentID = returncommitment.commitmentID;
+          let commitment = await Commitment.findByPk(commitmentID); 
+          await user.addCommitment(commitment);
+        }
+
+        const updated_user = await User.findByPk(user.userID, {
+          include:{
+              model: Commitment,
+              as: 'commitments'
+          }
+        });
+
+        console.log("User commitments have been updated: ", updated_user)
+      }
+
+      return res.status(200).send({
         message: "Profile created",
         id: user.userID,
         token: token,
@@ -113,6 +137,7 @@ const addProfile = async (req, res) => {
 const editProfile = async (req, res) => {
   try {
     const userID = req.user.id;
+    // const userID = req.body.id; // for POSTMAN testing
     const user = await User.findByPk(userID);
 
     if(!user){
@@ -139,6 +164,29 @@ const editProfile = async (req, res) => {
     }
   
     await user.save();
+
+    // editing Commitments for the user: 
+      
+    const commitments = req.body.commitments;
+    if (!commitments) {
+        console.log("[editProfile Route] Commitments body data is empty");
+    }else{
+      await user.setCommitments([]);
+      for(const returncommitment of commitments){
+        let commitmentID = returncommitment.commitmentID;
+        let commitment = await Commitment.findByPk(commitmentID); 
+        await user.addCommitment(commitment);
+      }
+
+      const updated_user = await User.findByPk(user.userID, {
+        include:{
+            model: Commitment,
+            as: 'commitments'
+        }
+      });
+
+      console.log("User commitments have been updated: ", updated_user)
+    }
   
     console.log("User updated succesfully, user: ", user);
     return res.status(200).send({
@@ -165,21 +213,29 @@ const getProfile = async (req, res) => {
         required: false,
         model: Caption,
         as: 'captions',
+        where: {
+          status: 1,
+        },
         include: [{
           model: User,
           as: 'writer'
-        }]},
+        }
+        ]},
         {
           required: false,
           model: Nomination,
           as: 'nominatedby',
           where: {
-            status: 0
+            status: 1
           },
           include: [{
             model: User,
             as: 'nominator'
           }]
+        },
+        {
+          model: Commitment,
+          as: 'commitments'
         }
       ]
     });
@@ -241,7 +297,7 @@ const searchUsers = async (req, res) => {
       attributes: ['userID', 'name', 'bitsId'],
       where: {
         userID: {
-          [Op.not]: req.body.id // req.user.id for production and req.body.id for testing
+          [Op.not]: req.user.id // req.user.id for production and req.body.id for testing
         },
         [Op.or]: [
           {
@@ -275,8 +331,8 @@ const searchUsers = async (req, res) => {
 const writeCaption = async (req, res) => {
   try {
     var caption = req.body.caption;
-    // const writerID = req.user.id;
-    const writerID = req.body.id;
+    const writerID = req.user.id;
+    // const writerID = req.body.id;
     const targetID = req.params.id;
     
     if (writerID == targetID) {
@@ -310,8 +366,7 @@ const writeCaption = async (req, res) => {
         error: "Please enter a valid caption!",
       });
     }else{
-      
-      const writer = await User.findByPk(writerID);
+    
       const receiver = await User.findByPk(targetID);
 
       if(!receiver){
@@ -364,7 +419,8 @@ const writeCaption = async (req, res) => {
         const newcaption = await Caption.create({
           writerID: writerID,
           targetID: targetID,
-          caption: caption
+          caption: caption,
+          status: 1
         });
 
         nomination.status = 1;
@@ -389,6 +445,7 @@ const writeCaption = async (req, res) => {
     });
   }
 };
+
 
 module.exports = {
   editProfile,
