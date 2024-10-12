@@ -15,13 +15,14 @@ const words = require("../bad-words.json");
 
 const sendRequest = async (req, res) => {
   try {
-    // const senderId = req.user.id;
-    const senderID = req.body.id;
+    const senderID = req.user.id;
     const targetID = req.body.targetId;
 
     var caption = req.body.caption;
 
     if (senderID == targetID) {
+        console.log("This is the senderID: ", senderID);
+        console.log("This is the targetID: ", targetID);
         return res.status(403).send({
             status: "failure", 
             message: "You can't write for yourself",
@@ -97,8 +98,7 @@ const sendRequest = async (req, res) => {
 
 const allRequests = async (req, res) => {
   try {
-    // const senderID = req.user.id;
-    const senderID = req.body.id;
+    const senderID = req.user.id;
 
     const requests = await Caption.findAll({
         where: {
@@ -110,7 +110,7 @@ const allRequests = async (req, res) => {
         include: {
             model: User,
             as: 'writer',
-            attributes: ['name', 'bitsId', 'imageUrl', 'quote']
+            attributes: ['name', 'imageUrl', 'quote']
         }
     });
 
@@ -141,8 +141,7 @@ const allRequests = async (req, res) => {
 
 const nominateUser = async (req, res) => {
   try {
-    // const senderID = req.user.id;
-    const senderID = req.body.id;
+    const senderID = req.user.id;
     const receiverID = req.body.receiverId;
 
     const target = await User.findByPk(receiverID);
@@ -180,7 +179,8 @@ const nominateUser = async (req, res) => {
 
     const new_nomination = await Nomination.create({
         nominatorID: senderID,
-        targetID: receiverID
+        targetID: receiverID,
+        status: 0
     });
 
     console.log("New nomination has been created: ", new_nomination);
@@ -222,8 +222,7 @@ const nominateUser = async (req, res) => {
 
 const declineRequest = async (req, res) => {
   try {
-    // senderId = req.user.id;
-    const senderID = req.body.id;
+    const senderID = req.user.id;
     const receiverID = req.body.receiverId;
 
     const nomination = await Nomination.findOne({where: {

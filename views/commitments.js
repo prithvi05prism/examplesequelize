@@ -80,10 +80,7 @@ const searchByCommitment = async (req, res) => {
                 required: false,
                 model: User,
                 as: 'members',
-                where:{
-                    senior: true
-                },
-                attributes: ['userID', 'name', 'bitsId']
+                attributes: ['userID', 'name', 'imageUrl']
             }
         });
 

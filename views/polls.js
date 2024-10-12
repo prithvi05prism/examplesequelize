@@ -1,6 +1,6 @@
 const { alterSync } = require('../db/sync');
 const { postgresClient } = require("../db/postgres");
-const { Op, Model, fn, literal, col } = require("sequelize");
+const { Op, Model } = require("sequelize");
 
 const {User} = require('../models/user');
 const {Caption} = require('../models/caption');
@@ -112,7 +112,7 @@ const deletePoll = async (req, res) => {
 
     console.log("Poll with given ID was successfully deleted");
     res.status(200).json({
-      msg: `Poll with ID ${pollID} was deleted`});
+      message: `Poll with ID ${pollID} was deleted`});
   } catch (error) {
     console.log("[deletePoll Route] There was an error: ", error);
     res.status(500).json({
@@ -125,8 +125,7 @@ const deletePoll = async (req, res) => {
 
 const votePoll = async (req, res) => {
   try {
-    // const voterID = req.user.id;
-    const voterID = req.body.id;
+    const voterID = req.user.id;
     const targetID = req.body.targetId;
     const pollID = req.params.id;
 
@@ -237,7 +236,7 @@ const leaderboard = async (req, res) => {
 
       if(result){
         let user = await User.findByPk(result.targetID);
-        response.push({ id: user.userID, name: user.name, votes: result.dataValues.count, imageUrl: user.imageUrl, bitsId: user.bitsId, pollQuestion: polls[j].question });  
+        response.push({ id: user.userID, name: user.name, votes: result.dataValues.count, imageUrl: user.imageUrl, pollQuestion: polls[j].question });  
       }
     }
 

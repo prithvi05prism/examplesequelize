@@ -29,71 +29,38 @@ const addProfile = async (req, res) => {
       });
     } else {
 
-      // Formatting the BITS ID and extracting branches:
-
-      const bitsId = req.body.id;
-
-      const stringyear = bitsId.substring(0,4);
-      const year = Number(stringyear);
-
-      let senior = false;
-
-      if(year<=2021){
-        senior = true;
-      }
-      console.log("[addProfile Route] This was the year: ", year);
-      console.log("[addProfile Route] This is the senior status: ", senior);
-
-      let branchCode = bitsId.substring(4, bitsId.length - 4);
-
-      if (branchCode.includes("B")) {
-        branchCode = [branchCode.substring(0, 2), branchCode.substring(2, 4)];
-      } else if ((branchCode[0] = "A")) {
-        branchCode = [branchCode.substring(0, 2)];
-      } else {
-        branchCode = [branchCode];
-      }
-
       // Quote Filtering:
 
       var quote = req.body.quote;
-      const filter = new Filter({ placeHolder: "x" });
-      filter.addWords(...words);
-      quote = filter.clean(quote);
+      if(quote){
+        const filter = new Filter({ placeHolder: "x" });
+        filter.addWords(...words);
+        quote = filter.clean(quote);
+      }else{
+        quote = "";
+      }
 
       // Creating the user:
 
       const user = await User.create({
         name: `${req.body.firstName} ${req.body.lastName}`,
         email: req.body.email,
-        bitsId: bitsId,
-        personalEmail: req.body.pEmail,
         phone: req.body.phone,
         quote: quote,
-        branchCode: branchCode,
         imageUrl: req.body.imgUrl,
-        senior: senior
       });
 
       // Creating a JWT token for the created user:
 
       const token = jwt.sign({ 
         id: user.userID, 
-        bitsID: user.bitsId, 
         email: user.email, 
-        branchCode: user.branchCode,
-        senior: senior
       },
         process.env.TOKEN_KEY,
         { 
           expiresIn: "180d" 
         }
       );
-
-      // Dev Testing: 
-
-      console.log("The user is created: ", user.toJSON());
-      console.log("The JWT token is: ", token);
 
       // adding Commitments for the user: 
 
@@ -103,19 +70,9 @@ const addProfile = async (req, res) => {
       }else{
         await user.setCommitments([]);
         for(const returncommitment of commitments){
-          let commitmentID = returncommitment.commitmentID;
-          let commitment = await Commitment.findByPk(commitmentID); 
+          let commitment = await Commitment.findOne({where: {commitment_name: returncommitment}})
           await user.addCommitment(commitment);
         }
-
-        const updated_user = await User.findByPk(user.userID, {
-          include:{
-              model: Commitment,
-              as: 'commitments'
-          }
-        });
-
-        console.log("User commitments have been updated: ", updated_user)
       }
 
       return res.status(200).send({
@@ -137,7 +94,6 @@ const addProfile = async (req, res) => {
 const editProfile = async (req, res) => {
   try {
     const userID = req.user.id;
-    // const userID = req.body.id; // for POSTMAN testing
     const user = await User.findByPk(userID);
 
     if(!user){
@@ -149,45 +105,22 @@ const editProfile = async (req, res) => {
     }
   
     const imgUrl = req.body.imgUrl;
+    var quote = req.body.quote;
   
-    if (imgUrl != "") {
+    if (imgUrl !== null) {
       user.imageUrl = imgUrl;
     }
     
-    var quote = req.body.quote;
-    const filter = new Filter({ placeHolder: "x" });
-    filter.addWords(...words);
-    quote = filter.clean(quote);
-    
-    if (quote != "") {
-      user.quote = quote;
+    if(quote){
+      const filter = new Filter({ placeHolder: "x" });
+      filter.addWords(...words);
+      quote = filter.clean(quote);
+      if (quote !== "") {
+        user.quote = quote;
+      }
     }
   
     await user.save();
-
-    // editing Commitments for the user: 
-      
-    const commitments = req.body.commitments;
-    if (!commitments) {
-        console.log("[editProfile Route] Commitments body data is empty");
-    }else{
-      await user.setCommitments([]);
-      for(const returncommitment of commitments){
-        let commitmentID = returncommitment.commitmentID;
-        let commitment = await Commitment.findByPk(commitmentID); 
-        await user.addCommitment(commitment);
-      }
-
-      const updated_user = await User.findByPk(user.userID, {
-        include:{
-            model: Commitment,
-            as: 'commitments'
-        }
-      });
-
-      console.log("User commitments have been updated: ", updated_user)
-    }
-  
     console.log("User updated succesfully, user: ", user);
     return res.status(200).send({
       status: "success",
@@ -207,8 +140,9 @@ const editProfile = async (req, res) => {
 
 const getProfile = async (req, res) => {
   try {
-    const userID = req.params.id
+    const userID = req.params.id;
     const user = await User.findByPk(userID, {
+      attributes: ['userID', 'imageUrl', 'name', 'quote', 'email', 'phone'],
       include: [{
         required: false,
         model: Caption,
@@ -226,7 +160,7 @@ const getProfile = async (req, res) => {
           model: Nomination,
           as: 'nominatedby',
           where: {
-            status: 1
+            status: 0
           },
           include: [{
             model: User,
@@ -234,8 +168,10 @@ const getProfile = async (req, res) => {
           }]
         },
         {
+          required: false,
           model: Commitment,
-          as: 'commitments'
+          as: 'commitments',
+          attributes: ['commitment_name', 'commitment_imageUrl'],
         }
       ]
     });
@@ -255,7 +191,7 @@ const getProfile = async (req, res) => {
     console.log("There was an error", err);
     return res.send({
       status: "failure",
-      msg: "There was an error, Please try after some time",
+      message: "There was an error, Please try after some time",
     });
   }
 };
@@ -294,20 +230,15 @@ const searchUsers = async (req, res) => {
     const search_value = `%${search_term}%`;
 
     let results = await User.findAll({
-      attributes: ['userID', 'name', 'bitsId'],
+      attributes: ['userID', 'name', 'imageUrl'],
       where: {
         userID: {
-          [Op.not]: req.user.id // req.user.id for production and req.body.id for testing
+          [Op.not]: req.user.id
         },
         [Op.or]: [
           {
             name: {
-              [Op.like]: search_value
-            }
-          },
-          {
-            bitsId: {
-              [Op.like]: search_value
+              [Op.iLike]: search_value
             }
           }
         ]
@@ -332,7 +263,6 @@ const writeCaption = async (req, res) => {
   try {
     var caption = req.body.caption;
     const writerID = req.user.id;
-    // const writerID = req.body.id;
     const targetID = req.params.id;
     
     if (writerID == targetID) {

@@ -25,31 +25,12 @@ const User = postgresClient.define(
             allowNull: false
         },
 
-        personalEmail:{
-            type: DataTypes.STRING
-        },
-
         phone:{
             type: DataTypes.STRING
         },
 
-        bitsId: {
-            type: DataTypes.STRING,
-            allowNull: false
-        },
-
         quote: {
             type: DataTypes.STRING
-        },
-
-        branchCode: {
-            type: DataTypes.ARRAY(DataTypes.STRING),
-            allowNull: false,
-        },
-
-        senior:{
-            type: DataTypes.BOOLEAN,
-            defaultValue: false
         }
     },
 
